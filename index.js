@@ -60,5 +60,32 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
+// reactive message monitoring
+client.on('messageCreate', async message => {
+    // ignore bot messages
+    if (message.author.bot) return;
+
+    const { trackMessage, checkLateNightActivity } = require('./utils/messageTracker');
+
+    // track this message for activity analysis
+    trackMessage(message.channel.id, message.author.id);
+
+    // check if user is up late
+    const lateNightCheck = checkLateNightActivity(message.author.id, message.channel.id);
+    
+    if (lateNightCheck && lateNightCheck.shouldWarn) {
+        if (lateNightCheck.isGroup) {
+            // group session - 5% chance to comment
+            if (Math.random() < 0.05) {
+                await message.channel.send(lateNightCheck.message);
+            }
+        } else {
+            // solo late-nighter -> always reply
+            await message.reply(lateNightCheck.message);
+        }
+    }
+});
+
+
 // login
 client.login(process.env.DISCORD_TOKEN);
