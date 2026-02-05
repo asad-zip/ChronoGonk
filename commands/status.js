@@ -188,6 +188,7 @@ async function handleClear(interaction) {
 
 // handle /status list
 async function handleList(interaction) {
+    // Clean up expired statuses first
     userStatuses.cleanExpired();
 
     const allUsers = userTimezones.getAll();
@@ -199,12 +200,16 @@ async function handleList(interaction) {
         });
     }
 
+    // Import time helpers
+    const { isLikelyAsleep, timeUntilAwake } = require('../utils/timeHelpers');
+
     let response = `🌐 **Crew Status - Night City** 🌃\n\n`;
 
-    // get data for all users
+    // Get data for all users
     const userData = allUsers.map(user => {
         const dt = DateTime.now().setZone(user.timezone);
         const status = userStatuses.get(user.user_id);
+        const sleepCheck = isLikelyAsleep(user.timezone);
         
         return {
             username: user.username,
@@ -212,13 +217,20 @@ async function handleList(interaction) {
             time: dt.toFormat('h:mm a'),
             hour: dt.hour,
             status: status,
-            userId: user.user_id
+            userId: user.user_id,
+            isAsleep: sleepCheck.isAsleep,
+            sleepReason: sleepCheck.reason
         };
     });
 
-    // sort by status priority (free > busy > dnd > no status), then by time
+    // Sort by status priority (free > busy > dnd > asleep > no status), then by time
     const statusPriority = { 'free': 0, 'busy': 1, 'dnd': 2 };
     userData.sort((a, b) => {
+        // Asleep users go to the bottom
+        if (a.isAsleep !== b.isAsleep) {
+            return a.isAsleep ? 1 : -1;
+        }
+        
         const aPriority = a.status ? statusPriority[a.status.status] : 3;
         const bPriority = b.status ? statusPriority[b.status.status] : 3;
         
@@ -226,27 +238,38 @@ async function handleList(interaction) {
         return a.hour - b.hour;
     });
 
-    // format each user
+    // Format each user
     userData.forEach(user => {
-        // determine time of day emoji
+        // Determine time of day emoji
         let timeEmoji = '🌙';
         if (user.hour >= 6 && user.hour < 12) timeEmoji = '🌅';
         else if (user.hour >= 12 && user.hour < 17) timeEmoji = '☀️';
         else if (user.hour >= 17 && user.hour < 21) timeEmoji = '🌆';
 
-        // status emoji
+        // Status emoji
         const statusEmoji = {
             'free': '🟢',
             'busy': '🟡',
             'dnd': '🔴'
         };
 
-        const emoji = user.status ? statusEmoji[user.status.status] : '⚪';
+        let emoji;
+        if (user.isAsleep) {
+            emoji = '😴'; // Asleep overrides status
+        } else {
+            emoji = user.status ? statusEmoji[user.status.status] : '⚪';
+        }
 
         response += `${emoji} ${timeEmoji} **${user.username}**\n`;
         response += `   ├ **Time:** ${user.time}\n`;
 
-        if (user.status) {
+        if (user.isAsleep) {
+            const wakeTime = timeUntilAwake(user.timezone);
+            response += `   ├ **Status:** Likely asleep 💤\n`;
+            if (wakeTime) {
+                response += `   ├ **Awake in:** ${wakeTime}\n`;
+            }
+        } else if (user.status) {
             const statusLabel = {
                 'free': 'Free',
                 'busy': 'Busy',
@@ -269,7 +292,7 @@ async function handleList(interaction) {
         response += '\n';
     });
 
-    response += `💡 *Legend: 🟢 Free · 🟡 Busy · 🔴 DND · ⚪ No status*`;
+    response += `💡 *Legend: 🟢 Free · 🟡 Busy · 🔴 DND · 😴 Asleep · ⚪ No status*`;
 
     return interaction.reply({
         content: response,
