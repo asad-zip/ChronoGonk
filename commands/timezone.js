@@ -147,7 +147,6 @@ async function handleList(interaction) {
         });
     }
 
-    // build the response
     let response = `🌐 **Night City Time Grid** 🌃\n\n`;
 
     // get current times for all users
@@ -158,8 +157,7 @@ async function handleList(interaction) {
             timezone: user.timezone,
             time: dt.toFormat('h:mm a'),
             date: dt.toFormat('EEE, MMM d'),
-            hour: dt.hour,
-            offset: dt.toFormat('ZZ')
+            hour: dt.hour
         };
     });
 
@@ -169,17 +167,15 @@ async function handleList(interaction) {
     // format each user
     userTimes.forEach(user => {
         // determine time of day emoji
-        let emoji = '🌙'; // Default: night
-        if (user.hour >= 6 && user.hour < 12) emoji = '🌅'; // Morning
-        else if (user.hour >= 12 && user.hour < 17) emoji = '☀️'; // Afternoon
-        else if (user.hour >= 17 && user.hour < 21) emoji = '🌆'; // Evening
+        let emoji = '🌙'; // default: night
+        if (user.hour >= 6 && user.hour < 12) emoji = '🌅'; // morning
+        else if (user.hour >= 12 && user.hour < 17) emoji = '☀️'; // afternoon
+        else if (user.hour >= 17 && user.hour < 21) emoji = '🌆'; // evening
 
-        response += `${emoji} **${user.username}**\n`;
-        response += `   ├ ${user.time} · ${user.date}\n`;
-        response += `   └ ${user.timezone} (${user.offset})\n\n`;
+        response += `${emoji} **${user.username}** · ${user.time} · ${user.date}\n`;
     });
 
-    response += `💡 *Tip: Use \`/timezone set\` to add yourself to the grid.*`;
+    response += `\n💡 *Tip: Use \`/timezone set\` to add yourself to the grid.*`;
 
     return interaction.reply({
         content: response,
