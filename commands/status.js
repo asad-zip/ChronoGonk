@@ -188,7 +188,6 @@ async function handleClear(interaction) {
 
 // handle /status list
 async function handleList(interaction) {
-    // Clean up expired statuses first
     userStatuses.cleanExpired();
 
     const allUsers = userTimezones.getAll();
@@ -200,12 +199,12 @@ async function handleList(interaction) {
         });
     }
 
-    // Import time helpers
+    // import time helpers
     const { isLikelyAsleep, timeUntilAwake } = require('../utils/timeHelpers');
 
     let response = `🌐 **Crew Status - Night City** 🌃\n\n`;
 
-    // Get data for all users
+    // get data for all users
     const userData = allUsers.map(user => {
         const dt = DateTime.now().setZone(user.timezone);
         const status = userStatuses.get(user.user_id);
@@ -223,7 +222,7 @@ async function handleList(interaction) {
         };
     });
 
-    // Sort by status priority (free > busy > dnd > asleep > no status), then by time
+    // sort by status priority (free > busy > dnd > asleep > no status), then by time
     const statusPriority = { 'free': 0, 'busy': 1, 'dnd': 2 };
     userData.sort((a, b) => {
         // Asleep users go to the bottom
@@ -238,15 +237,15 @@ async function handleList(interaction) {
         return a.hour - b.hour;
     });
 
-    // Format each user
+    // format each user
     userData.forEach(user => {
-        // Determine time of day emoji
+        // determine time of day emoji
         let timeEmoji = '🌙';
         if (user.hour >= 6 && user.hour < 12) timeEmoji = '🌅';
         else if (user.hour >= 12 && user.hour < 17) timeEmoji = '☀️';
         else if (user.hour >= 17 && user.hour < 21) timeEmoji = '🌆';
 
-        // Status emoji
+        // status emoji
         const statusEmoji = {
             'free': '🟢',
             'busy': '🟡',
@@ -255,7 +254,7 @@ async function handleList(interaction) {
 
         let emoji;
         if (user.isAsleep) {
-            emoji = '😴'; // Asleep overrides status
+            emoji = '😴'; // asleep overrides status
         } else {
             emoji = user.status ? statusEmoji[user.status.status] : '⚪';
         }
