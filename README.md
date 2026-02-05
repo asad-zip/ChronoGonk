@@ -1,4 +1,4 @@
-# NightCity Themed Discord Timezone Bot 🌃
+# Night City Themed Discord Timezone Bot 
 
 A Discord bot for managing time across a small group in different time zones.
 
