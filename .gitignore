@@ -1,0 +1,5 @@
+node_modeules/
+.env
+config.json
+*.log
+.DS_Store
