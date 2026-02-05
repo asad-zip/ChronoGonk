@@ -123,8 +123,77 @@ const userStatuses = {
 // initialize database on load
 initializeDatabase();
 
+// activity tracking table
+db.exec(`
+    CREATE TABLE IF NOT EXISTS activity (
+        user_id TEXT NOT NULL,
+        username TEXT NOT NULL,
+        date TEXT NOT NULL,
+        message_count INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, date)
+    )
+`);
+
+// activity tracking functions
+const userActivity = {
+    // increment message count for today
+    incrementToday: (userId, username) => {
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        const stmt = db.prepare(`
+            INSERT INTO activity (user_id, username, date, message_count)
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(user_id, date) DO UPDATE SET
+                message_count = message_count + 1,
+                username = excluded.username
+        `);
+        return stmt.run(userId, username, today);
+    },
+
+    // get activity for last N days
+    getRecentActivity: (days = 7) => {
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        const startDateStr = startDate.toISOString().split('T')[0];
+
+        const stmt = db.prepare(`
+            SELECT user_id, username, SUM(message_count) as total_messages
+            FROM activity
+            WHERE date >= ?
+            GROUP BY user_id, username
+            ORDER BY total_messages DESC
+        `);
+        return stmt.all(startDateStr);
+    },
+
+    // get today's activity
+    getToday: () => {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const stmt = db.prepare(`
+            SELECT user_id, username, message_count
+            FROM activity
+            WHERE date = ?
+            ORDER BY message_count DESC
+        `);
+        return stmt.all(today);
+    },
+
+    // clean old data (keep last 30 days)
+    cleanOldData: () => {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 30);
+        const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
+
+        const stmt = db.prepare('DELETE FROM activity WHERE date < ?');
+        return stmt.run(cutoffDateStr);
+    }
+};
+
+
 module.exports = {
     db,
     userTimezones,
-    userStatuses
+    userStatuses,
+    userActivity
 };

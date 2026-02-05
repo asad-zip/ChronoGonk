@@ -66,9 +66,13 @@ client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     const { trackMessage, checkLateNightActivity } = require('./utils/messageTracker');
+    const { userActivity } = require('./database');
 
     // track this message for activity analysis
     trackMessage(message.channel.id, message.author.id);
+
+    // track message count for stats 
+    userActivity.incrementToday(message.author.id, message.author.username);
 
     // check if user is up late
     const lateNightCheck = checkLateNightActivity(message.author.id, message.channel.id);
